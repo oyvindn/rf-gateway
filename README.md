@@ -43,8 +43,8 @@ board_manager:
 ### Compile sketch
 `arduino-cli compile -b esp32:esp32:esp32 rf-gateway`
 
-### Upload sketch to ESP32-DevKitC using e.g. a FTD-232R-3V3 USB to TTL Serial Cable:
-`arduino-cli upload -p /dev/cu.usbserial-FTC0DLEV -b esp32:esp32:esp32 rf-gateway`
+### Upload sketch to ESP32-DevKitC:
+`arduino-cli upload -p /dev/cu.usbserial-143120 -b esp32:esp32:esp32 rf-gateway`
 
 ### Open the serial monitor
-`arduino-cli monitor -p /dev/cu.usbserial-FTC0DLEV -c baudrate=115200`
+`arduino-cli monitor -p /dev/cu.usbserial-143120 -c baudrate=115200`
