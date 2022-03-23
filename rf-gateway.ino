@@ -206,11 +206,11 @@ void mqttSend()
       {
         message_to_send = NULL;
 
-        Serial.print("[MQTT] Message sent");
+        Serial.println("[MQTT] Message sent");
       }
       else
       {
-        Serial.print("[MQTT] Sending failed");
+        Serial.println("[MQTT] Sending failed");
       }
     }
 
