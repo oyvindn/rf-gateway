@@ -28,6 +28,12 @@ RHReliableDatagram radioManager(rf69Driver, RF_GATEWAY_ADDRESS);
 WiFiClientSecure wifiClientSecure;
 PubSubClient mqttClient(MQTT_BROKER_HOST, MQTT_BROKER_PORT, wifiClientSecure);
 
+uint8_t rfReceiveBuffer[RH_RF69_MAX_MESSAGE_LEN];
+char messageBuffer[80];
+char *message_to_send = NULL;
+
+long lastMqttReconnectAttempt = 0;
+
 void setup()
 {
   Serial.begin(115200);
@@ -40,31 +46,12 @@ void setup()
   initOTA();
 }
 
-uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
-
 void loop()
 {
   ensureWifiConnection();
-  ensureMqttConnection();
-
-  if (radioManager.available())
-  {
-    uint8_t len = sizeof(buf);
-    uint8_t from;
-    if (radioManager.recvfromAck(buf, &len, &from))
-    {
-      Serial.print("[RFM69] Message received from node ");
-      Serial.print(from);
-      Serial.print(": ");
-      Serial.println((char *)buf);
-      
-      char payload[80];
-      sprintf(payload, "%s;%s", from, buf);
-      mqttClient.publish(RF_GATEWAY_TOPIC, payload, true);
-    }
-  }
-
-  mqttClient.loop();
+  rfReceive();
+  mqttSend();
+  ArduinoOTA.handle();
 }
 
 void ensureWifiConnection()
@@ -129,7 +116,7 @@ void initOTA()
   ArduinoOTA.setPasswordHash(OTA_PASSWORD_MD5_HASH);
 
   ArduinoOTA.onStart([]()
-  {
+                     {
     String type;
     if (ArduinoOTA.getCommand() == U_FLASH)
     {
@@ -139,14 +126,13 @@ void initOTA()
     {
         type = "filesystem";
     }
-    Serial.println("[OTA] Start updating " + type);
-    })
-    .onEnd([]()
-    { Serial.println("\n[OTA] End"); })
-    .onProgress([](unsigned int progress, unsigned int total)
-    { Serial.printf("[OTA] Progress: %u%%\r", (progress / (total / 100))); })
-    .onError([](ota_error_t error)
-    {
+    Serial.println("[OTA] Start updating " + type); })
+      .onEnd([]()
+             { Serial.println("\n[OTA] End"); })
+      .onProgress([](unsigned int progress, unsigned int total)
+                  { Serial.printf("[OTA] Progress: %u%%\r", (progress / (total / 100))); })
+      .onError([](ota_error_t error)
+               {
       Serial.printf("[OTA] Error[%u]: ", error);
       if (error == OTA_AUTH_ERROR)
           Serial.println("Auth Failed");
@@ -157,27 +143,65 @@ void initOTA()
       else if (error == OTA_RECEIVE_ERROR)
           Serial.println("Receive Failed");
       else if (error == OTA_END_ERROR)
-          Serial.println("End Failed");
-    });
+          Serial.println("End Failed"); });
 
   ArduinoOTA.begin();
 }
 
-void ensureMqttConnection()
+void rfReceive()
 {
-    if (!mqttClient.connected())
+  if (radioManager.available())
+  {
+    uint8_t len = sizeof(rfReceiveBuffer);
+    uint8_t from;
+    if (radioManager.recvfromAck(rfReceiveBuffer, &len, &from))
     {
-        Serial.println("[MQTT] Connecting");
+      Serial.print("[RFM69] Message received from node ");
+      Serial.print(from);
+      Serial.print(": ");
+      Serial.println((char *)rfReceiveBuffer);
 
-        if (mqttClient.connect(MQTT_CLIENT_ID))
-        {
-            Serial.println("[MQTT] Connected to broker");
-        }
-        else
-        {
-            Serial.print("[MQTT] Connection failed, rc=");
-            Serial.println(mqttClient.state());
-            delay(MQTT_RECOVER_TIME_MS);
-        }
+      sprintf(messageBuffer, "%d;%s", from, rfReceiveBuffer);
+
+      message_to_send = messageBuffer;
     }
+  }
+}
+
+void mqttSend()
+{
+  if (!mqttClient.connected())
+  {
+    long now = millis();
+    if (now - lastMqttReconnectAttempt >= MQTT_RECOVER_TIME_MS)
+    {
+      lastMqttReconnectAttempt = now;
+
+      Serial.println("[MQTT] Connecting");
+
+      if (mqttClient.connect(MQTT_CLIENT_ID))
+      {
+        lastMqttReconnectAttempt = 0;
+        Serial.println("[MQTT] Connected to broker");
+      }
+      else
+      {
+        Serial.print("[MQTT] Connection failed, rc=");
+        Serial.println(mqttClient.state());
+      }
+    }
+  }
+  else
+  {
+    if (message_to_send != NULL)
+    {
+      boolean publishSucceeded = mqttClient.publish(RF_GATEWAY_TOPIC, message_to_send, true);
+      if (publishSucceeded)
+      {
+        message_to_send = NULL;
+      }
+    }
+
+    mqttClient.loop();
+  }
 }
