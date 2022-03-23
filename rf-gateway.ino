@@ -195,10 +195,22 @@ void mqttSend()
   {
     if (message_to_send != NULL)
     {
+      Serial.print("[MQTT] Sending message \"");
+      Serial.print(message_to_send);
+      Serial.print("\" on topic \"");
+      Serial.print(RF_GATEWAY_TOPIC);
+      Serial.println("\"");
+
       boolean publishSucceeded = mqttClient.publish(RF_GATEWAY_TOPIC, message_to_send, true);
       if (publishSucceeded)
       {
         message_to_send = NULL;
+
+        Serial.print("[MQTT] Message sent");
+      }
+      else
+      {
+        Serial.print("[MQTT] Sending failed");
       }
     }
 
