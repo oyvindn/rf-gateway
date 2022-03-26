@@ -3,8 +3,8 @@
 
 ## Hardware
 
-* ESP32-DevKitC
-* HopeRF RFM69CW 13DBM 433Mhz RF Transceiver Module
+* [Adafruit HUZZAH32 - ESP32 Feather](https://learn.adafruit.com/adafruit-huzzah32-esp32-feather)
+* [HopeRF RFM69CW 13DBM 433Mhz RF Transceiver Module](https://www.hoperf.com/modules/rf_transceiver/RFM69C.html)
 
 
 ## Arduino sketch dependencies
@@ -14,7 +14,7 @@
 * [RadioHead Packet Radio library for embedded microprocessors](http://www.airspayce.com/mikem/arduino/RadioHead/)
 
 
-## Compile, upload and monitor ESP32-DevKitC using the Arduino CLI
+## Compile, upload and monitor ESP32 using the Arduino CLI
 
 ### Add secrets
 Copy `arduino_secrets.h.example` to `arduino_secrets.h` and change the example secret values.
@@ -41,10 +41,10 @@ board_manager:
 `arduino-cli core install esp32:esp32`
 
 ### Compile sketch
-`arduino-cli compile -b esp32:esp32:esp32 rf-gateway`
+`arduino-cli compile -b esp32:esp32:featheresp32 rf-gateway`
 
-### Upload sketch to ESP32-DevKitC:
-`arduino-cli upload -p /dev/cu.usbserial-143120 -b esp32:esp32:esp32 rf-gateway`
+### Upload sketch to ESP32:
+`arduino-cli upload -p /dev/cu.usbserial-0190DEAD -b esp32:esp32:featheresp32 rf-gateway`
 
 ### Open the serial monitor
-`arduino-cli monitor -p /dev/cu.usbserial-143120 -c baudrate=115200`
+`arduino-cli monitor -p /dev/cu.usbserial-0190DEAD -c baudrate=115200`
