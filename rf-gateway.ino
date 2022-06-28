@@ -90,7 +90,9 @@ void initRadio()
   // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM (for low power module)
   if (rf69Driver.setFrequency(RF_FREQUENCY))
   {
-    Serial.println("[RFM69] Frequency set to 433MHz");
+    Serial.print("[RFM69] Frequency set to ");
+    Serial.print(RF_FREQUENCY);
+    Serial.println("MHz");
   }
   else
   {
