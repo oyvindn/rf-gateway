@@ -4,7 +4,7 @@
 ## Hardware
 
 * [Adafruit HUZZAH32 - ESP32 Feather](https://learn.adafruit.com/adafruit-huzzah32-esp32-feather)
-* [HopeRF RFM69CW 13DBM 433Mhz RF Transceiver Module](https://www.hoperf.com/modules/rf_transceiver/RFM69C.html)
+* [HopeRF RFM69CW 13DBM 868Mhz RF Transceiver Module](https://www.hoperf.com/modules/rf_transceiver/RFM69C.html)
 
 
 ## Arduino sketch dependencies

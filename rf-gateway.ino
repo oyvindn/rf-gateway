@@ -19,7 +19,7 @@
 #define RF_GATEWAY_TOPIC "home/rf-gateway"
 
 #define RF_INTERRUPT_GPIO 15
-#define RF_FREQUENCY 433.00
+#define RF_FREQUENCY 868.00
 #define RF_GATEWAY_ADDRESS 1
 
 RH_RF69 rf69Driver(SS, RF_INTERRUPT_GPIO);
