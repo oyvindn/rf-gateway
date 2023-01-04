@@ -3,8 +3,9 @@
 
 ## Hardware
 
-* [Adafruit HUZZAH32 - ESP32 Feather](https://learn.adafruit.com/adafruit-huzzah32-esp32-feather)
+* [ESP32-WROOM-32D](https://www.espressif.com/sites/default/files/documentation/esp32-wroom-32d_esp32-wroom-32u_datasheet_en.pdf)
 * [HopeRF RFM69CW 13DBM 868Mhz RF Transceiver Module](https://www.hoperf.com/modules/rf_transceiver/RFM69C.html)
+* DS18B20 Digital temperature sensor
 
 
 ## Arduino sketch dependencies
@@ -41,10 +42,10 @@ board_manager:
 `arduino-cli core install esp32:esp32`
 
 ### Compile sketch
-`arduino-cli compile -b esp32:esp32:featheresp32 rf-gateway`
+`arduino-cli compile -b esp32:esp32:esp32 rf-gateway.ino`
 
 ### Upload sketch to ESP32:
-`arduino-cli upload -p /dev/cu.usbserial-0190DEAD -b esp32:esp32:featheresp32 rf-gateway`
+`arduino-cli upload -p /dev/cu.usbserial-A600K4HV -b esp32:esp32:esp32 rf-gateway.ino`
 
 ### Open the serial monitor
-`arduino-cli monitor -p /dev/cu.usbserial-0190DEAD -c baudrate=115200`
+`arduino-cli monitor -p /dev/cu.usbserial-A600K4HV -c baudrate=115200`

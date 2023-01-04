@@ -18,7 +18,7 @@
 #define MQTT_RECOVER_TIME_MS 10000 // Wait time after a failed connection attempt
 #define RF_GATEWAY_TOPIC "home/rf-gateway"
 
-#define RF_INTERRUPT_GPIO 15
+#define RF_INTERRUPT_GPIO 17
 #define RF_FREQUENCY 868.00
 #define RF_GATEWAY_ADDRESS 1
 
