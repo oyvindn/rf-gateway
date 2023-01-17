@@ -6,6 +6,8 @@
 #include <ArduinoOTA.h>
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
 #include "arduino_secrets.h"
 
@@ -22,17 +24,26 @@
 #define RF_FREQUENCY 868.00
 #define RF_GATEWAY_ADDRESS 1
 
+#define DS18B20_TEMPERATURE_SENSOR_PIN 13
+#define DS18B20_TEMPERATURE_POLL_INTERVALL_MS 60000
+
 RH_RF69 rf69Driver(SS, RF_INTERRUPT_GPIO);
 RHReliableDatagram radioManager(rf69Driver, RF_GATEWAY_ADDRESS);
 
 WiFiClientSecure wifiClientSecure;
 PubSubClient mqttClient(MQTT_BROKER_HOST, MQTT_BROKER_PORT, wifiClientSecure);
 
-uint8_t rfReceiveBuffer[RH_RF69_MAX_MESSAGE_LEN];
-char messageBuffer[80];
-char *message_to_send = NULL;
+OneWire oneWire(DS18B20_TEMPERATURE_SENSOR_PIN);
+DallasTemperature temperatureSensors(&oneWire);
 
-long lastMqttReconnectAttempt = 0;
+uint8_t rfReceiveBuffer[RH_RF69_MAX_MESSAGE_LEN];
+char rfMessageBuffer[80];
+char *rfMessageReadyToBeSent = NULL;
+char tempMessageBuffer[80];
+char *tempMessageReadyToBeSent = NULL;
+
+unsigned long lastMqttReconnectAttempt = 0;
+unsigned long lastTemperatureReading = 0;
 
 void setup()
 {
@@ -44,13 +55,15 @@ void setup()
   initRadio();
   initMQTT();
   initOTA();
+  temperatureSensors.begin();
 }
 
 void loop()
 {
   ensureWifiConnection();
   rfReceive();
-  mqttSend();
+  readDS18B20Temperature();
+  sendQueuedMessagesToMqtt();
   ArduinoOTA.handle();
 }
 
@@ -163,59 +176,92 @@ void rfReceive()
       Serial.print(": ");
       Serial.println((char *)rfReceiveBuffer);
 
-      sprintf(messageBuffer, "%d;%s", from, rfReceiveBuffer);
-
-      message_to_send = messageBuffer;
+      sprintf(rfMessageBuffer, "%d;%s", from, rfReceiveBuffer);
+      rfMessageReadyToBeSent = rfMessageBuffer;
     }
   }
 }
 
-void mqttSend()
+void sendQueuedMessagesToMqtt()
 {
   if (!mqttClient.connected())
   {
-    long now = millis();
-    if (now - lastMqttReconnectAttempt >= MQTT_RECOVER_TIME_MS)
-    {
-      lastMqttReconnectAttempt = now;
-
-      Serial.println("[MQTT] Connecting");
-
-      if (mqttClient.connect(MQTT_CLIENT_ID))
-      {
-        lastMqttReconnectAttempt = 0;
-        Serial.println("[MQTT] Connected to broker");
-      }
-      else
-      {
-        Serial.print("[MQTT] Connection failed, rc=");
-        Serial.println(mqttClient.state());
-      }
-    }
+    tryConnectToMqtt();
   }
   else
   {
-    if (message_to_send != NULL)
+    if (rfMessageReadyToBeSent != NULL && sendMessageToMqtt(RF_GATEWAY_TOPIC, rfMessageReadyToBeSent))
     {
-      Serial.print("[MQTT] Sending message \"");
-      Serial.print(message_to_send);
-      Serial.print("\" on topic \"");
-      Serial.print(RF_GATEWAY_TOPIC);
-      Serial.println("\"");
+      rfMessageReadyToBeSent = NULL;
+    }
 
-      boolean publishSucceeded = mqttClient.publish(RF_GATEWAY_TOPIC, message_to_send, true);
-      if (publishSucceeded)
-      {
-        message_to_send = NULL;
-
-        Serial.println("[MQTT] Message sent");
-      }
-      else
-      {
-        Serial.println("[MQTT] Sending failed");
-      }
+    if (tempMessageReadyToBeSent != NULL && sendMessageToMqtt(RF_GATEWAY_TOPIC, tempMessageReadyToBeSent))
+    {
+      tempMessageReadyToBeSent = NULL;
     }
 
     mqttClient.loop();
+  }
+}
+
+void tryConnectToMqtt()
+{
+  if (lastMqttReconnectAttempt == 0 || millis() - lastMqttReconnectAttempt >= MQTT_RECOVER_TIME_MS)
+  {
+    lastMqttReconnectAttempt = millis();
+
+    Serial.println("[MQTT] Connecting");
+
+    if (mqttClient.connect(MQTT_CLIENT_ID))
+    {
+      lastMqttReconnectAttempt = 0;
+      Serial.println("[MQTT] Connected to broker");
+    }
+    else
+    {
+      Serial.print("[MQTT] Connection failed, rc=");
+      Serial.println(mqttClient.state());
+    }
+  }
+}
+
+bool sendMessageToMqtt(const char *topic, const char *message)
+{
+  Serial.print("[MQTT] Sending message \"");
+  Serial.print(message);
+  Serial.print("\" on topic \"");
+  Serial.print(topic);
+  Serial.println("\"");
+
+  boolean publishSucceeded = mqttClient.publish(topic, message, false);
+  if (publishSucceeded)
+  {
+    Serial.println("[MQTT] Message sent");
+    return true;
+  }
+  else
+  {
+    Serial.println("[MQTT] Sending failed");
+    return false;
+  }
+}
+
+void readDS18B20Temperature()
+{
+  if (lastTemperatureReading == 0 || millis() - lastTemperatureReading >= DS18B20_TEMPERATURE_POLL_INTERVALL_MS)
+  {
+    lastTemperatureReading = millis();
+
+    temperatureSensors.requestTemperatures();
+    float temp = temperatureSensors.getTempCByIndex(0);
+    char temperatureStr[10];
+    dtostrf(temp, 1, 2, temperatureStr);
+
+    Serial.print("[DS18B20] Temperature is \"");
+    Serial.print(temperatureStr);
+    Serial.println("\"");
+
+    sprintf(tempMessageBuffer, "1;T;%s", temperatureStr);
+    tempMessageReadyToBeSent = tempMessageBuffer;
   }
 }
